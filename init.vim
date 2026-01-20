@@ -200,8 +200,6 @@ autocmd FileType * if &ft != 'dart' | setlocal noexpandtab tabstop=4 shiftwidth=
 " 3. The only tab exception
 autocmd FileType dart setlocal expandtab tabstop=2 shiftwidth=2 softtabstop=2
 
-highlight NonText guifg=#00FF00 ctermfg=green
-highlight SpecialKey guifg=#00FF00 ctermfg=green
 " list tabs or spaces
 set list
 set listchars=tab:▸\ ,trail:·
@@ -220,7 +218,7 @@ let g:nord_bold = 1
 let g:nord_italic = 1
 
 " Set the colorscheme
-" colorscheme nord
+colorscheme nord
 
 " Disable the startup message disappearing too quickly
 set shortmess+=I
@@ -399,3 +397,7 @@ require("flutter-tools").setup({
 })
 
 EOF
+
+" highlight space and tab indicators
+highlight NonText guifg=#3ea4c9
+highlight SpecialKey guifg=#3ea4c9
