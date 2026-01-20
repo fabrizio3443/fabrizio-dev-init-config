@@ -364,10 +364,31 @@ require('dap-cs').setup({
 EOF
 
 lua << EOF
+-- 1. Initialize Flutter Tools
+local capabilities = require('cmp_nvim_lsp').default_capabilities()
+
 require("flutter-tools").setup({
+  ui = {
+    border = "rounded",
+    notification_style = "plugin"
+  },
   lsp = {
     enabled = true,
-  },
+    capabilities = capabilities,
+    settings = {
+      -- This forces the vertical split behavior you want
+      lineLength = 60, 
+      renameFilesWithClasses = "always",
+    },
+    on_attach = function(client, bufnr)
+      vim.api.nvim_create_autocmd("BufWritePre", {
+        buffer = bufnr,
+        callback = function()
+          vim.lsp.buf.format({ bufnr = bufnr, async = false, timeout_ms = 2000 })
+        end,
+      })
+    end
+  }
 })
-EOF
 
+EOF
