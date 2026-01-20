@@ -186,19 +186,26 @@ function! OpenTerminalAndSplit()
 endfunction
 autocmd VimEnter * call OpenTerminalAndSplit()
 
-" General settings
-set expandtab
-set tabstop=2
-set shiftwidth=2
-set softtabstop=2
-set smarttab
-set mouse=a
-set showtabline=2  " Always show tabline
-set cursorline
+" 1. Global Defaults
+set noexpandtab
+set tabstop=4
+set shiftwidth=4
+set softtabstop=0
 
-" --- DART/FLUTTER FIX ---
-" Force spaces ONLY for Dart files so the formatter doesn't delete commas
+" 2. Enforce Tabs
+" This runs AFTER Neovim's internal language scripts load.
+" It forces EVERYTHING back to Tabs, unless it's a Dart file.
+autocmd FileType * if &ft != 'dart' | setlocal noexpandtab tabstop=4 shiftwidth=4 | endif
+
+" 3. The only tab exception
 autocmd FileType dart setlocal expandtab tabstop=2 shiftwidth=2 softtabstop=2
+
+highlight NonText guifg=#00FF00 ctermfg=green
+highlight SpecialKey guifg=#00FF00 ctermfg=green
+" list tabs or spaces
+set list
+set listchars=tab:▸\ ,trail:·
+:set listchars+=space:·
 
 " Git Blame
 let g:gitblame_enabled = 1
@@ -213,7 +220,7 @@ let g:nord_bold = 1
 let g:nord_italic = 1
 
 " Set the colorscheme
-colorscheme nord
+" colorscheme nord
 
 " Disable the startup message disappearing too quickly
 set shortmess+=I
