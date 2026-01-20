@@ -1,6 +1,8 @@
 " Always show absolute + relative numbers in editable buffers
 set number
 set norelativenumber  " Disable relative numbers completely
+" Set the leader key to Space
+let mapleader = " "
 set mouse=a " Enable mouse 
 " Always force absolute-only line numbers
 augroup AbsoluteNumbers
@@ -74,21 +76,9 @@ Plug 'hoob3rt/lualine.nvim'  " Better status line
 call plug#end()
 
 autocmd FileType NERD_tree,neo-tree,peek,floatterm setlocal norelativenumber
-
-lua << EOF
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "markdown",
-  callback = function()
-    if not vim.treesitter.highlighter.active[vim.api.nvim_get_current_buf()] then
-      vim.treesitter.start()
-    end
-  end
-})
-EOF
-
 lua << EOF
 require('render-markdown').setup({
-  -- you can add settings here or leave it empty
+
 })
 EOF
 
@@ -152,6 +142,19 @@ require('barbar').setup({
 })
 EOF
 
+" 1. IDE-style shortcuts
+" Open 'Right-Click' menu for Getters, Setters, and Wrapping Widgets
+nnoremap <leader>ca <cmd>lua vim.lsp.buf.code_action()<CR>
+
+" Rename variable/class everywhere (Refactor)
+nnoremap <leader>rn <cmd>lua vim.lsp.buf.rename()<CR>
+
+" Go to definition (like Ctrl+Click)
+nnoremap gd <cmd>lua vim.lsp.buf.definition()<CR>
+
+" Show documentation (like hovering with a mouse)
+nnoremap K <cmd>lua vim.lsp.buf.hover()<CR>
+
 " Tab navigation mappings
 nnoremap <Leader>t :tabnew<CR>:NERDTree<CR>  " Open new tab
 nnoremap <Leader>n :tabnext<CR>  " Next tab
@@ -184,12 +187,18 @@ endfunction
 autocmd VimEnter * call OpenTerminalAndSplit()
 
 " General settings
-set noexpandtab
+set expandtab
 set tabstop=2
 set shiftwidth=2
+set softtabstop=2
+set smarttab
 set mouse=a
 set showtabline=2  " Always show tabline
-set cursorline      " Highlight the current line for better visibility
+set cursorline
+
+" --- DART/FLUTTER FIX ---
+" Force spaces ONLY for Dart files so the formatter doesn't delete commas
+autocmd FileType dart setlocal expandtab tabstop=2 shiftwidth=2 softtabstop=2
 
 " Git Blame
 let g:gitblame_enabled = 1
@@ -249,12 +258,30 @@ EOF
 
 lua << EOF
 local cmp = require("cmp")
+local luasnip = require("luasnip")
 
 cmp.setup({
+  snippet = {
+    expand = function(args)
+      luasnip.lsp_expand(args.body)
+    end,
+  },
   mapping = cmp.mapping.preset.insert({
     ["<Tab>"] = cmp.mapping(function(fallback)
       if cmp.visible() then
         cmp.select_next_item()
+      elseif luasnip.expand_or_jumpable() then
+        luasnip.expand_or_jump()
+      else
+        fallback()
+      end
+    end, { "i", "s" }),
+
+    ["<S-Tab>"] = cmp.mapping(function(fallback)
+      if cmp.visible() then
+        cmp.select_prev_item()
+      elseif luasnip.jumpable(-1) then
+        luasnip.jump(-1)
       else
         fallback()
       end
@@ -262,19 +289,26 @@ cmp.setup({
 
     ["<CR>"] = cmp.mapping.confirm({ select = true }),
   }),
-
   sources = cmp.config.sources({
     { name = "nvim_lsp" },
+    { name = "luasnip" },
     { name = "path" },
   }),
 })
 EOF
 
 
-" Copy and paste current line below 
+" Normal Mode Duplicate single line (Current setup)
 nnoremap <C-b> yyp
+
+" Copy and paste current line below 
+vnoremap <C-b> yP
 " Insert mode: Duplicate line and insert at the end of the new line
 inoremap <C-b> <Esc>yypA
+
+" Move visual selection up or down with Alt+j / Alt+k
+vnoremap <A-j> :m '>+1<CR>gv=gv
+vnoremap <A-k> :m '<-2<CR>gv=gv
 
 " ============================================
 " LSP Diagnostics auto-popup on cursor / click
@@ -298,66 +332,6 @@ end
 -- Trigger on cursor hover (keyboard) or click (mouse)
 vim.api.nvim_create_autocmd({"CursorHold", "CursorMoved", "CursorMovedI"}, {
   callback = show_diagnostics
-})
-EOF
-
-lua << EOF
--- 1. Initialize Flutter Tools
-require("flutter-tools").setup({
-  -- REMOVED hardcoded run_args to allow manual control
-  ui = {
-    border = "rounded",
-    notification_style = "plugin"
-  },
-  decorations = {
-    statusline = {
-      app_version = true,
-      device = true,
-    }
-  },
-  widget_guides = {
-    enabled = true,
-  },
-  lsp = {
-    color = { enabled = true },
-    settings = {
-      showTodos = true,
-      completeFunctionCalls = true,
-      renameFilesWithClasses = "always",
-    }
-  }
-})
-
--- 2. Flexible Custom Command: :FlutterBuild
--- Usage: ':FlutterBuild' for standard web build
--- Usage: ':FlutterBuild --wasm' for WASM web build
-vim.api.nvim_create_user_command('FlutterBuild', function(opts)
-  local args = opts.args ~= "" and opts.args or ""
-  vim.cmd('split | term flutter build web ' .. args)
-end, { nargs = '?' })
-
--- 3. Setup Auto Hot-Reload on Save
-vim.api.nvim_create_autocmd("BufWritePost", {
-  pattern = "*.dart",
-  callback = function()
-    local flutter = require("flutter-tools.commands")
-    flutter.reload()
-  end,
-})
-
--- 4. Update CMP setup
-local cmp = require("cmp")
-cmp.setup({
-  snippet = {
-    expand = function(args)
-      require('luasnip').lsp_expand(args.body)
-    end,
-  },
-  sources = cmp.config.sources({
-    { name = "nvim_lsp" },
-    { name = "luasnip" },
-    { name = "path" },
-  }),
 })
 EOF
 
@@ -388,3 +362,12 @@ require('dap-cs').setup({
   }
 })
 EOF
+
+lua << EOF
+require("flutter-tools").setup({
+  lsp = {
+    enabled = true,
+  },
+})
+EOF
+
